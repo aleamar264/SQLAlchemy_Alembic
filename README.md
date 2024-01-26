@@ -129,3 +129,63 @@ class Example2(Base, TableNameMixin):
 ## Relationship
 
 ## Create tables on PostgreSQL
+
+To create the tables in PostgreSQL we use a tool called Alembic, with this we can modify (alter) the tables, save the versions of the this and come back when want thanks an auxiliar table (version table). In this part alembix generate a code for the creation of the tables, but is not perfect, sometimes we need to make a little revision and make some modifications.
+
+```shell
+alembic init name_of_migration
+alembic revision --autogenerate -m "Initial migration"
+alembic upgrade head
+```
+
+The use of `alembic upgrade head` is to use the last version of the tables, if we want to use an specific version we need to pass the `UUID` of the version.
+
+### How configure alembic
+
+Always is a good idea not use hard coded credential, so in this case we use a `.env` file.
+
+```env
+POSTGRES_USER=""
+POSTGRES_PASSWORD=""
+DATABASE_HOST=""
+POSTGRES_DB=""
+```
+
+```python
+from environs import Env
+
+env = Env()
+env.read_env('.env')
+
+url = URL.create(
+    drivername="postgresql+psycopg2",
+    username=env.str("POSTGRES_USER"),
+    password=env.str('POSTGRES_PASSWORD'),
+    host=env.str('DATABASE_HOST'),
+    database=env.str('POSTGRES_DB'),
+    port=5432
+)
+
+```
+
+First we need to create the url to connect to the database, after that set that url like the url for alembic
+
+```python
+
+config.set_main_option(
+    "sqlalchemy.url",
+    url.render_as_string(hide_password=False)
+)
+```
+
+But how we get the tables to create? fot this we need to import all the tables that we created earlier
+
+```python
+from mymodel import Base
+
+...
+
+target_metadata = Base.metadata
+```
+
+With this, alembic will search all the tables with dependencies of the class `Base`. If we have multiple models, we can use this like a list `target_metadata = [Base.metadata, Base2.metadata, ..., Basen.metadata]`
